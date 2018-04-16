@@ -24,7 +24,25 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
+	num_particles = 100;
 
+	default_random_engine generator;
+    normal_distribution<double> dist_x(0, std[0]);
+    normal_distribution<double> dist_y(0, std[1]);
+    normal_distribution<double> dist_theta(0, std[2]);
+
+	for (int i = 0; i<num_particles; i++) {
+		Particle oneParticle;
+		oneParticle.id     = i;	
+		oneParticle.x 	   = x + dist_x(generator);
+		oneParticle.y 	   = y + dist_y(generator);
+		oneParticle.theta  = theta + dist_theta(generator);
+		oneParticle.weight = 1.f;
+
+		particles.push_back(oneParticle);
+		/* Check Initialization */
+		// cout << "particles  " << particles[i].id << " x = " << particles[i].x << endl;
+	}
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -75,6 +93,10 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+
+    Particle particle_test;
+
+    return particle_test;
 }
 
 string ParticleFilter::getAssociations(Particle best)
