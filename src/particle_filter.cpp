@@ -43,13 +43,29 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		/* Check Initialization */
 		// cout << "particles  " << particles[i].id << " x = " << particles[i].x << endl;
 	}
+	is_initialized = true;
 }
+
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	// TODO: Add measurements to each particle and add random Gaussian noise.
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+
+	default_random_engine generator;
+    normal_distribution<double> dist_x(0, std_pos[0]);
+    normal_distribution<double> dist_y(0, std_pos[1]);
+    normal_distribution<double> dist_theta(0, std_pos[2]);
+
+	// Update each particle //
+	for (int i = 0; i<num_particles; i++) {
+		/* Motion Model */
+		particles[i].x += velocity/yaw_rate*(sin(particles[i].theta+yaw_rate)-sin(particles[i].theta)) + dist_x(generator);
+		particles[i].y += velocity/yaw_rate*(-cos(particles[i].theta+yaw_rate)+cos(particles[i].theta)) + dist_y(generator);
+		particles[i].theta += yaw_rate + dist_theta(generator);
+		// cout << "particles  " << particles[i].id << " x = " << particles[i].x << endl;
+	}
 
 }
 
