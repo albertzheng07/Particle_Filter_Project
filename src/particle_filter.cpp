@@ -75,6 +75,15 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+	// Assign predicted landmark to observed land mark
+	// loop over each predicted landmark 
+	double error;	
+    for (uint32_t i = 0; i < predicted.size(); i++) {
+    	    for (uint32_t j = 0; j < observations.size(); j++) {
+    	    	  error = dist(predicted[j].x,predicted[j].y,observations[j].x,observations[j].y);  // find lowest error
+    	    	  // remove observation from prediction 
+    	    }
+    }
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -89,6 +98,36 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+	std::vector<double> transform_row[3];
+	std::vector<double> out;
+	std::vector<double> observ; // single set of observations 
+
+	double heading_part, x_part, y_part;
+
+	for (int i = 0; i < num_particles; i++) {
+		heading_part = particles[i].theta; // particle heading
+		x_part 		 = particles[i].x;
+		y_part 		 = particles[i].y;
+
+		transform_row[0] = {cos(heading_part), -sin(heading_part), x_part}; 
+		transform_row[1] = {sin(heading_part), cos(heading_part), y_part},
+		transform_row[2] = {0.0, 0.0, 1.0};
+
+        for(int i = 0; i < observations.size(); i++)
+        {
+ 			observ[0] = observations[i].x;
+			observ[1] = observations[i].y;
+			observ[2] = 1.f;       	
+			for (int j = 0; j < 3; j++)
+			{
+				for (int k = 0; k < 3; k++)
+				{
+					out[j] += transform_row[j][k]*observ[k]; // output land mark observations in the map frame w.r.t particle 
+				}
+			}
+		}
+	}
+
 }
 
 void ParticleFilter::resample() {
