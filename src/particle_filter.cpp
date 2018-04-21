@@ -70,10 +70,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 }
 
 
-// #define MIN(a,b) ({ typeof(a) _a = a; \ // Macro to compute min for any type
-//         typeof(b) _b = b; \
-//         (((_a)<(_b))? (_a) : (_b)); })
-
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations, std::vector<LandmarkObs>& associations) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
@@ -85,6 +81,10 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	std::vector<LandmarkObs>copyObserv = observations;
 
 	double minError;	
+	if (predicted.size() >copyObserv.size())
+	{
+		cout << "Prediction size is greater than observation size" << endl;
+	}
     for (uint32_t i = 0; i < predicted.size(); i++) {
     		// setup variable observation size
     	   	uint32_t prevPos = 0;
@@ -171,14 +171,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
 
 		SetAssociations(particles[i],association_ids,sense_x,sense_y); // set all vectors of associations of id, position x, y per particle
-	
-		// // compute the multi-variable gaussian distribution by taking the associated map land mark with the observed land mark
-		// double distro
-		// for (int i =; i < particleObs.size(); i++)
-		// {
-			// normal_distribution<double> dist_theta(error, error);
 
-		// }
+		// // compute the multi-variable gaussian distribution by taking the associated map land mark with the observed land mark
+		particles[i].weight = 1;
+		for (int i = 0; i < particleObs.size(); i++)
+		{
+			double xerr = particleObs[i].x-particles[i].sense_x[i];
+			double yerr = particleObs[i].y-particles[i].sense_y[i];
+			double exponent = xerr*xerr/(2*std_landmark[0])+yerr*yerr/(2*std_landmark[1]);
+			double denom = M_PI*2.0*std_landmark[0]*std_landmark[1];	
+			particles[i].weight *= 1.0/(denom)*exp(-exponent); // update weight by multiplying all pdfs together
+		}
 	}
 
 }
@@ -187,7 +190,7 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-
+	// particles[i].weight
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
