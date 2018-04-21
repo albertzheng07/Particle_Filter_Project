@@ -77,8 +77,9 @@ public:
 	 *   a nearest-neighbors data association).
 	 * @param predicted Vector of predicted landmark observations
 	 * @param observations Vector of landmark observations
+	 * @param associations Vector of landmark associations	 
 	 */
-	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
+	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations, std::vector<LandmarkObs> & associations);
 	
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 

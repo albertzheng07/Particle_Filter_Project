@@ -69,7 +69,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+
+// #define MIN(a,b) ({ typeof(a) _a = a; \ // Macro to compute min for any type
+//         typeof(b) _b = b; \
+//         (((_a)<(_b))? (_a) : (_b)); })
+
+void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations, std::vector<LandmarkObs>& associations) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
@@ -77,11 +82,23 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 	// Assign predicted landmark to observed land mark
 	// loop over each predicted landmark 
-	double error;	
+	std::vector<LandmarkObs>copyObserv = observations;
+
+	double minError;	
     for (uint32_t i = 0; i < predicted.size(); i++) {
-    	    for (uint32_t j = 0; j < observations.size(); j++) {
-    	    	  error = dist(predicted[j].x,predicted[j].y,observations[j].x,observations[j].y);  // find lowest error
-    	    	  // remove observation from prediction 
+    		// setup variable observation size
+    	   	uint32_t prevPos = 0;
+    	    for (uint32_t j = 0; j < copyObserv.size(); j++) {
+    	    	  double eachError = dist(predicted[i].x,predicted[i].y,copyObserv[j].x,copyObserv[j].y);
+    	    	  if (eachError < minError || j == 0) // initialize or find min Error 
+    	    	  {
+    	    	  	minError = eachError;  // set to min error
+    	    	  	associations[i].id = copyObserv[j].id; // associate predicted landmark with observed landmark
+    	    	  	associations[i].x = copyObserv[j].x;
+    	    	  	associations[i].y = copyObserv[j].y;    	    	  	    	    	  	
+    	    	  	copyObserv.erase(copyObserv.begin()+j-prevPos); // remove observation from vector for future data associations
+    	    	  	prevPos = j+1;
+    	    	  }
     	    }
     }
 }
@@ -103,15 +120,26 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	std::vector<double> observ; // single set of observations 
 
 	double heading_part, x_part, y_part;
+	
+	std::vector<LandmarkObs> mapObs;
+
+    for(int i = 0; i < map_landmarks.landmark_list.size(); i++) // set map_landmarks to map Obs vector
+    {
+		mapObs[i].id = map_landmarks.landmark_list[i].id_i;
+		mapObs[i].x  = map_landmarks.landmark_list[i].x_f;
+		mapObs[i].y  = map_landmarks.landmark_list[i].y_f;	
+    }
 
 	for (int i = 0; i < num_particles; i++) {
 		heading_part = particles[i].theta; // particle heading
 		x_part 		 = particles[i].x;
 		y_part 		 = particles[i].y;
-
+		// transform each land mark observation into the map frame w.r.t to the particle
 		transform_row[0] = {cos(heading_part), -sin(heading_part), x_part}; 
 		transform_row[1] = {sin(heading_part), cos(heading_part), y_part},
 		transform_row[2] = {0.0, 0.0, 1.0};
+		std::vector<LandmarkObs> particleObs;
+		std::vector<LandmarkObs> associations;
 
         for(int i = 0; i < observations.size(); i++)
         {
@@ -125,7 +153,32 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 					out[j] += transform_row[j][k]*observ[k]; // output land mark observations in the map frame w.r.t particle 
 				}
 			}
+			particleObs[i].id = observations[i].id; // set land mark observations for particle
+			particleObs[i].x = out[0]; // transformed x
+			particleObs[i].y = out[1]; // transformed y			
 		}
+		dataAssociation(particleObs, mapObs, associations); // associate each observed land mark for the particle to the map
+		std::vector<int> association_ids;
+		std::vector<double> sense_x;
+		std::vector<double> sense_y;
+
+		// extract struct into individiual vectors
+		for(int i = 0; i < associations.size(); i++)
+        {
+        	association_ids[i] = associations[i].id;
+        	sense_x[i] = associations[i].x;
+        	sense_y[i] = associations[i].y;
+        }
+
+		SetAssociations(particles[i],association_ids,sense_x,sense_y); // set all vectors of associations of id, position x, y per particle
+	
+		// // compute the multi-variable gaussian distribution by taking the associated map land mark with the observed land mark
+		// double distro
+		// for (int i =; i < particleObs.size(); i++)
+		// {
+			// normal_distribution<double> dist_theta(error, error);
+
+		// }
 	}
 
 }
