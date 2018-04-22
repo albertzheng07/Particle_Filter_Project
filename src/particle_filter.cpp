@@ -45,7 +45,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		/* Check Initialization */
 		// cout << "particles  " << particles[i].id << " x = " << particles[i].x << endl;
 	}
-	is_initialized = false;
+	is_initialized = true;
 }
 
 
@@ -88,6 +88,12 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 		cout << "Prediction size is greater than observation size" << endl;
 	}
     for (uint32_t i = 0; i < predicted.size(); i++) {
+    	 //    for (uint32_t j = 0; j < copyObserv.size(); j++) {
+    	 //    cout << "copyObserv " << j << " = "<< copyObserv[j].id << endl;
+    	 //    cout << "copyObserv " << j << " = "<< copyObserv[j].x << endl;    	    
+    		// }   
+    	    // cout << "copyObserv size = "<< copyObserv.size() << endl;
+
     		// setup variable observation size
     	   	uint32_t prevPos = 0;
     	   	minError = 0.0;
@@ -109,11 +115,13 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     	    	  		associations.at(i) = sAssoc; // replace updated association at association position 	    	  	    	    	  	
 
     	    	  	} 
-    	    	  	prevPos = j+1;
+    	    	  	prevPos = j;
     	    	  }
-    	    	  if (j == copyObserv.size()) // reached the end of the availabile observations
+    	    	  if (j == copyObserv.size()-1) // reached the end of the availabile observations
     	    	  {
-    	    	  	copyObserv.erase(copyObserv.begin()+j-prevPos); // remove observation from vector for future data associations
+    	    	  	// cout << "Erased copyObserv id = "<< copyObserv[prevPos].id << endl;
+
+    	    	  	copyObserv.erase(copyObserv.begin()+prevPos); // remove observation from vector for future data associations
     	    	  }
     	    }
     }
@@ -138,7 +146,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	double heading_part, x_part, y_part;
 	
 	std::vector<LandmarkObs> mapObs;
-    cout << "test 2" << endl;
+    // cout << "test 2" << endl;
 
     for(int landmarkInd = 0; landmarkInd < map_landmarks.landmark_list.size(); landmarkInd++) // set map_landmarks to map Obs vector
     {
@@ -148,7 +156,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		sLandMark.y  = map_landmarks.landmark_list[landmarkInd].y_f;	
 		mapObs.push_back(sLandMark);
     }
-    cout << "test 3" << endl;
+    // cout << "test 3" << endl;
 
 	//for (int i = 0; i < num_particles; i++) {
 	for (int partInd = 0; partInd < num_particles; partInd++) {    
@@ -161,7 +169,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		transform_row[2] = {0.0, 0.0, 1.0};
 		std::vector<LandmarkObs> particleObs;
 		std::vector<LandmarkObs> associations;
-    	cout << "test 4" << endl;
+    	// cout << "test 4" << endl;
 
         for(int observInd = 0; observInd < observations.size(); observInd++)
         {
@@ -186,21 +194,31 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			sParticleObs.y = out[1]; // transformed y
 			particleObs.push_back(sParticleObs);			
 		}
-    	cout << "test 5" << endl;		
+    	// cout << "test 5" << endl;		
 		dataAssociation(particleObs, mapObs, associations); // associate each observed land mark for the particle to the map TODO check assocations make sense
 		std::vector<int> association_ids;
 		std::vector<double> sense_x;
 		std::vector<double> sense_y;
-    	cout << "test 6" << endl;		
+    	// cout << "test 6" << endl;		
+		// for(int observInd = 0; observInd < particleObs.size(); observInd++)
+  //       {
+  //   		cout << "particleObs id = " << particleObs[observInd].id << endl;
+		// 	cout << "particleObs x" << particleObs[observInd].x << endl;
+		// 	cout << "particleObs y" << particleObs[observInd].y << endl;
+  //       }
+		// cout << "particleObs size = " <<particleObs.size() << endl;    	
+		// cout << "associations size = " <<associations.size() << endl;
 		// extract struct into individiual vectors 
 		for(int assocInd = 0; assocInd < associations.size(); assocInd++)
         {
         	association_ids.push_back(associations[assocInd].id);
-			// cout << "associations x" << associations[i].x << endl;
+   //  		cout << "associations id = " << associations[assocInd].id << endl;
+			// cout << "associations x" << associations[assocInd].x << endl;
+			// cout << "associations y" << associations[assocInd].y << endl;			
         	sense_x.push_back(associations[assocInd].x);
         	sense_y.push_back(associations[assocInd].y);
         }
-    	cout << "test 7" << endl;		
+    	// cout << "test 7" << endl;		
 
 		Particle update_particle = SetAssociations(particles[partInd],association_ids,sense_x,sense_y); // set all vectors of associations of id, position x, y per particle
 		particles[partInd] = update_particle;
@@ -210,28 +228,32 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		// 	cout << "associationsObs x" << particles[i].sense_x[i] << endl;
 		// 	cout << "associationsObs y" << particles[i].sense_y[i] << endl;
   //       }
+		// cout << "particleObs size = " <<particleObs.size() << endl;    	
+		// cout << "weights size = " << weights.size() << endl;    	
+
+
 		// // compute the multi-variable gaussian distribution by taking the associated map land mark with the observed land mark
 		for (int partObsInd = 0; partObsInd < particleObs.size(); partObsInd++)
 		{
-			// cout << "i"  << partObsInd << endl;
+			// cout << "partObsInd"  << partObsInd << endl;
 			// cout << "particleObs x" << particleObs[partInd].x << endl;
 			// cout << "particleObs y" << particleObs[partInd].y << endl;
 			// cout << "associationsObs x" << particles[partInd].sense_x[partObsInd] << endl;
 			// cout << "associationsObs y" << particles[partInd].sense_y[partObsInd] << endl;						
 			double xerr = particleObs[partInd].x-particles[partInd].sense_x[partObsInd];
 			double yerr = particleObs[partInd].y-particles[partInd].sense_y[partObsInd];
-			double exponent = xerr*xerr/(2*std_landmark[0])+yerr*yerr/(2*std_landmark[1]);
+			double exponent = xerr*xerr/(2.0*std_landmark[0])+yerr*yerr/(2.0*std_landmark[1]);
 			double denom = M_PI*2.0*std_landmark[0]*std_landmark[1];	
 			// cout << "test 8a" << endl;		
 			double currentWeight = particles[partInd].weight;
 			particles[partInd].weight = currentWeight/denom*exp(-exponent); // update weight by multiplying all pdfs together
-			weights.at(partObsInd) = currentWeight/denom*exp(-exponent);
+			weights.at(partInd) = particles[partInd].weight;
 			// cout << "denom" << denom << endl;
 			// cout << "exp(-exponent)" << exp(-exponent) << endl;
 		}
-		cout << "test 8" << endl;		
+		// cout << "test 8" << endl;		
 	}
-
+	// abort();
 }
 
 void ParticleFilter::resample() {
