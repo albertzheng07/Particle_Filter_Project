@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <iterator>
+#include <map>
 
 #include "particle_filter.h"
 
@@ -37,13 +38,14 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		oneParticle.x 	   = x + dist_x(generator);
 		oneParticle.y 	   = y + dist_y(generator);
 		oneParticle.theta  = theta + dist_theta(generator);
-		oneParticle.weight = 1.f;
+		oneParticle.weight = 1.0;
 
 		particles.push_back(oneParticle);
+		weights.push_back(oneParticle.weight);
 		/* Check Initialization */
 		// cout << "particles  " << particles[i].id << " x = " << particles[i].x << endl;
 	}
-	is_initialized = true;
+	is_initialized = false;
 }
 
 
@@ -81,23 +83,37 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	std::vector<LandmarkObs>copyObserv = observations;
 
 	double minError;	
-	if (predicted.size() >copyObserv.size())
+	if (predicted.size() > copyObserv.size())
 	{
 		cout << "Prediction size is greater than observation size" << endl;
 	}
     for (uint32_t i = 0; i < predicted.size(); i++) {
     		// setup variable observation size
     	   	uint32_t prevPos = 0;
+    	   	minError = 0.0;
     	    for (uint32_t j = 0; j < copyObserv.size(); j++) {
     	    	  double eachError = dist(predicted[i].x,predicted[i].y,copyObserv[j].x,copyObserv[j].y);
     	    	  if (eachError < minError || j == 0) // initialize or find min Error 
     	    	  {
     	    	  	minError = eachError;  // set to min error
-    	    	  	associations[i].id = copyObserv[j].id; // associate predicted landmark with observed landmark
-    	    	  	associations[i].x = copyObserv[j].x;
-    	    	  	associations[i].y = copyObserv[j].y;    	    	  	    	    	  	
-    	    	  	copyObserv.erase(copyObserv.begin()+j-prevPos); // remove observation from vector for future data associations
+    	    	  	LandmarkObs sAssoc;
+    	    	  	sAssoc.id = copyObserv[j].id; // associate predicted landmark with observed landmark
+    	    	  	sAssoc.x = copyObserv[j].x;
+    	    	  	sAssoc.y = copyObserv[j].y; 
+    	    	  	if (j == 0)
+    	    	  	{
+    	    	  		associations.push_back(sAssoc); 
+    	    	  	}
+    	    	  	else
+    	    	  	{
+    	    	  		associations.at(i) = sAssoc; // replace updated association at association position 	    	  	    	    	  	
+
+    	    	  	} 
     	    	  	prevPos = j+1;
+    	    	  }
+    	    	  if (j == copyObserv.size()) // reached the end of the availabile observations
+    	    	  {
+    	    	  	copyObserv.erase(copyObserv.begin()+j-prevPos); // remove observation from vector for future data associations
     	    	  }
     	    }
     }
@@ -116,72 +132,104 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 	std::vector<double> transform_row[3];
-	std::vector<double> out;
-	std::vector<double> observ; // single set of observations 
+	std::vector<double> out = {0.0, 0.0, 0.0};
+	double observ[3]; // single set of observations 
 
 	double heading_part, x_part, y_part;
 	
 	std::vector<LandmarkObs> mapObs;
+    cout << "test 2" << endl;
 
-    for(int i = 0; i < map_landmarks.landmark_list.size(); i++) // set map_landmarks to map Obs vector
+    for(int landmarkInd = 0; landmarkInd < map_landmarks.landmark_list.size(); landmarkInd++) // set map_landmarks to map Obs vector
     {
-		mapObs[i].id = map_landmarks.landmark_list[i].id_i;
-		mapObs[i].x  = map_landmarks.landmark_list[i].x_f;
-		mapObs[i].y  = map_landmarks.landmark_list[i].y_f;	
+    	LandmarkObs sLandMark;
+		sLandMark.id = map_landmarks.landmark_list[landmarkInd].id_i;
+		sLandMark.x  = map_landmarks.landmark_list[landmarkInd].x_f;
+		sLandMark.y  = map_landmarks.landmark_list[landmarkInd].y_f;	
+		mapObs.push_back(sLandMark);
     }
+    cout << "test 3" << endl;
 
-	for (int i = 0; i < num_particles; i++) {
-		heading_part = particles[i].theta; // particle heading
-		x_part 		 = particles[i].x;
-		y_part 		 = particles[i].y;
+	//for (int i = 0; i < num_particles; i++) {
+	for (int partInd = 0; partInd < num_particles; partInd++) {    
+		heading_part = particles[partInd].theta; // particle heading
+		x_part 		 = particles[partInd].x;
+		y_part 		 = particles[partInd].y;
 		// transform each land mark observation into the map frame w.r.t to the particle
 		transform_row[0] = {cos(heading_part), -sin(heading_part), x_part}; 
 		transform_row[1] = {sin(heading_part), cos(heading_part), y_part},
 		transform_row[2] = {0.0, 0.0, 1.0};
 		std::vector<LandmarkObs> particleObs;
 		std::vector<LandmarkObs> associations;
+    	cout << "test 4" << endl;
 
-        for(int i = 0; i < observations.size(); i++)
+        for(int observInd = 0; observInd < observations.size(); observInd++)
         {
- 			observ[0] = observations[i].x;
-			observ[1] = observations[i].y;
-			observ[2] = 1.f;       	
+ 			observ[0] = observations[observInd].x;
+			observ[1] = observations[observInd].y;
+			observ[2] = 1.0;     
+    		// cout << "test 5" << endl;
+
 			for (int j = 0; j < 3; j++)
 			{
 				for (int k = 0; k < 3; k++)
 				{
+					// cout << "transform_row[" << j << "]"<< "[" << k << "] =" << transform_row[j][k] << endl;
+					// cout << "observ[" << k << "] = " << observ[k] << endl;
 					out[j] += transform_row[j][k]*observ[k]; // output land mark observations in the map frame w.r.t particle 
+					// cout << "out[" << j << "] = " << out[j] << endl;					
 				}
 			}
-			particleObs[i].id = observations[i].id; // set land mark observations for particle
-			particleObs[i].x = out[0]; // transformed x
-			particleObs[i].y = out[1]; // transformed y			
+			LandmarkObs sParticleObs;
+			sParticleObs.id = observations[observInd].id; // set land mark observations for particle
+			sParticleObs.x = out[0]; // transformed x
+			sParticleObs.y = out[1]; // transformed y
+			particleObs.push_back(sParticleObs);			
 		}
-		dataAssociation(particleObs, mapObs, associations); // associate each observed land mark for the particle to the map
+    	cout << "test 5" << endl;		
+		dataAssociation(particleObs, mapObs, associations); // associate each observed land mark for the particle to the map TODO check assocations make sense
 		std::vector<int> association_ids;
 		std::vector<double> sense_x;
 		std::vector<double> sense_y;
-
-		// extract struct into individiual vectors
-		for(int i = 0; i < associations.size(); i++)
+    	cout << "test 6" << endl;		
+		// extract struct into individiual vectors 
+		for(int assocInd = 0; assocInd < associations.size(); assocInd++)
         {
-        	association_ids[i] = associations[i].id;
-        	sense_x[i] = associations[i].x;
-        	sense_y[i] = associations[i].y;
+        	association_ids.push_back(associations[assocInd].id);
+			// cout << "associations x" << associations[i].x << endl;
+        	sense_x.push_back(associations[assocInd].x);
+        	sense_y.push_back(associations[assocInd].y);
         }
+    	cout << "test 7" << endl;		
 
-		SetAssociations(particles[i],association_ids,sense_x,sense_y); // set all vectors of associations of id, position x, y per particle
+		Particle update_particle = SetAssociations(particles[partInd],association_ids,sense_x,sense_y); // set all vectors of associations of id, position x, y per particle
+		particles[partInd] = update_particle;
 
+		// for(int i = 0; i < associations.size(); i++)
+  //       {
+		// 	cout << "associationsObs x" << particles[i].sense_x[i] << endl;
+		// 	cout << "associationsObs y" << particles[i].sense_y[i] << endl;
+  //       }
 		// // compute the multi-variable gaussian distribution by taking the associated map land mark with the observed land mark
-		particles[i].weight = 1;
-		for (int i = 0; i < particleObs.size(); i++)
+		for (int partObsInd = 0; partObsInd < particleObs.size(); partObsInd++)
 		{
-			double xerr = particleObs[i].x-particles[i].sense_x[i];
-			double yerr = particleObs[i].y-particles[i].sense_y[i];
+			// cout << "i"  << partObsInd << endl;
+			// cout << "particleObs x" << particleObs[partInd].x << endl;
+			// cout << "particleObs y" << particleObs[partInd].y << endl;
+			// cout << "associationsObs x" << particles[partInd].sense_x[partObsInd] << endl;
+			// cout << "associationsObs y" << particles[partInd].sense_y[partObsInd] << endl;						
+			double xerr = particleObs[partInd].x-particles[partInd].sense_x[partObsInd];
+			double yerr = particleObs[partInd].y-particles[partInd].sense_y[partObsInd];
 			double exponent = xerr*xerr/(2*std_landmark[0])+yerr*yerr/(2*std_landmark[1]);
 			double denom = M_PI*2.0*std_landmark[0]*std_landmark[1];	
-			particles[i].weight *= 1.0/(denom)*exp(-exponent); // update weight by multiplying all pdfs together
+			// cout << "test 8a" << endl;		
+			double currentWeight = particles[partInd].weight;
+			particles[partInd].weight = currentWeight/denom*exp(-exponent); // update weight by multiplying all pdfs together
+			weights.at(partObsInd) = currentWeight/denom*exp(-exponent);
+			// cout << "denom" << denom << endl;
+			// cout << "exp(-exponent)" << exp(-exponent) << endl;
 		}
+		cout << "test 8" << endl;		
 	}
 
 }
@@ -191,6 +239,22 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 	// particles[i].weight
+
+  	std::default_random_engine gen;
+	std::discrete_distribution<double> distro(weights.begin(),weights.end());
+
+    std::map<int, int> m; // sample n particles using initial weights 
+    
+    for(int n=0; n<num_particles; n++) {
+        ++m[distro(gen)];
+    }
+
+    int particle_index;
+    for (auto p : m)
+    {
+    	particle_index = p.first;
+    	weights[particle_index] = particles[particle_index].weight = p.second/num_particles;
+    }
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
