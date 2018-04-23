@@ -42,9 +42,9 @@ int main()
 	  cout << "Error: Could not open map file" << endl;
 	  return -1;
   }
-
   // Create particle filter
   ParticleFilter pf;
+  // int counter = 0;
 
   h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -114,6 +114,12 @@ int main()
 		  // Update the weights and resample
 		  pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
 		  pf.resample();
+
+      // counter += 1;
+      // if (counter > 5)
+      // {
+      // abort();
+      // }
 
 		  // Calculate and output the average weighted error of the particle filter over all time steps so far.
 		  vector<Particle> particles = pf.particles;
