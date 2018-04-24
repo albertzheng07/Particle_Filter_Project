@@ -44,7 +44,6 @@ int main()
   }
   // Create particle filter
   ParticleFilter pf;
-  // int counter = 0;
 
   h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -109,17 +108,10 @@ int main()
 				    obs.y = y_sense[i];
 				    noisy_observations.push_back(obs);
         	}
-      // cout << "test 1" << endl;
 
 		  // Update the weights and resample
 		  pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
 		  pf.resample();
-
-      // counter += 1;
-      // if (counter > 5)
-      // {
-      // abort();
-      // }
 
 		  // Calculate and output the average weighted error of the particle filter over all time steps so far.
 		  vector<Particle> particles = pf.particles;
@@ -135,6 +127,10 @@ int main()
 			weight_sum += particles[i].weight;
 		  }
 		  cout << "highest w " << highest_weight << endl;
+      cout << "best particle x " << best_particle.x << endl;
+      cout << "best particle y " << best_particle.y << endl;      
+      cout << "best particle theta " << best_particle.theta*57.3 << endl;
+     
 		  cout << "average w " << weight_sum/num_particles << endl;
 
           json msgJson;
@@ -150,12 +146,13 @@ int main()
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-	  
+	        // abort();      
+
         }
       } else {
         std::string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-      }
+      } 
     }
 
   });
